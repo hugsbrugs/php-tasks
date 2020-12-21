@@ -33,7 +33,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	private function load()
 	{
 		# Check table exist
-		if($this->tasks_db->table_exists(TASK_STORE_SQLLITE_TABLE))
+		if($this->tasks_db->table_exists(TASK_STORE_SQLLITE_TABLE)==false)
 		{
 			# Create Table
 			$this->initialize();

@@ -34,7 +34,7 @@ class TaskStoreMysql implements TaskStoreInterface
 	private function load()
 	{
 		# Check table exist
-		if($this->tasks_db->table_exists(TASK_STORE_MYSQL_TABLE))
+		if($this->tasks_db->table_exists(TASK_STORE_MYSQL_TABLE)==false)
 		{
 			# Create Table
 			$this->initialize();

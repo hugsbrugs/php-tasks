@@ -1,7 +1,7 @@
 <?php
 
 # For PHP7
-// declare(strict_types=1);
+declare(strict_types=1);
 
 // namespace Hug\Tests\Sftp;
 
