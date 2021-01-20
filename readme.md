@@ -29,6 +29,9 @@ TASK_STORE_METHOD = 'file';'file'|'mysql'|'sqllite'
 [task_store_file]
 TASK_STORE_FILE = '/var/www/my-project/tasks.json'
 
+[task_tmp_file]
+TASK_TMP_FILE = '/tmp'
+
 [task_store_mysql]
 TASK_STORE_MYSQL_USER = 'username'
 TASK_STORE_MYSQL_PASS = 'password'
@@ -121,4 +124,4 @@ Task status can be one of following : 'pending', 'running', 'closed', 'failed'
 
 ## Author
 
-Hugo Maugey [visit my website ;)](https://hugo.maugey.fr)
+Hugo Maugey [Webmaster](https://hugo.maugey.fr/webmaster) | [Consultant SEO](https://hugo.maugey.fr/consultant-seo) | [Fullstack developer](https://hugo.maugey.fr/developpeur-web)

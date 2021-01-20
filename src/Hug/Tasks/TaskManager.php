@@ -16,6 +16,8 @@ use Hug\Scripts\Scripts as Scripts;
  */
 class TaskManager
 {
+	public $tmp = null;
+
 	// timer loop 
 	public $loop = null;
 
@@ -32,11 +34,22 @@ class TaskManager
 	public $running_pids = [];
 
 	public $task_store = null;
+
+
 	/**
 	 *
 	 */
 	function __construct($tasks_threads, $task_store)
 	{
+		if(defined('TASK_TMP_FILE'))
+		{
+			$this->tmp = TASK_TMP_FILE;
+		}
+		else
+		{
+			$this->tmp = sys_get_temp_dir();
+		}
+		
 		$this->max_threads = $tasks_threads;
 		$this->task_store = $task_store;
 
@@ -184,7 +197,7 @@ class TaskManager
 		            {						
 						if($task->command!==null)
 						{
-							$log_file = tempnam(sys_get_temp_dir(), $task->name);
+							$log_file = tempnam($this->tmp, $task->name);
 
 							$res = Scripts::run($task->command, $log_file);
 
