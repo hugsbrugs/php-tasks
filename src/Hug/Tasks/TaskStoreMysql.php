@@ -4,6 +4,9 @@ namespace Hug\Tasks;
 
 use Hug\Database\MySqlDB as MySqlDB;
 
+use DateTime;
+use PDOException;
+
 /**
  *
  */
@@ -49,21 +52,20 @@ class TaskStoreMysql implements TaskStoreInterface
 	        while($row = $query->fetch())
 	        {
 	            //var_dump($row);
-	            $this->tasks[] = new Task(
+	        	$this->tasks[$row['id']] = Task::create(
 					$row['id'],
 					$row['pid'],
 					$row['name'],
 					$row['command'],
 					$row['status'],
 					$row['success'],
-					$row['start_date'],
-					$row['end_date'],
-					$row['do_not_launch_until'],
+					$row['start_date']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['start_date']) : null,
+					$row['end_date']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['end_date']) : null,
+					$row['do_not_launch_until']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['do_not_launch_until']) : null,
 					$row['log_file'],
 					$row['relaunched'],
-					json_decode($row['params'])
-					// unserialize($row['params']),
-	            );
+	            	json_decode($row['params'])
+				);
 	        }
 		}
 	}
@@ -92,9 +94,9 @@ class TaskStoreMysql implements TaskStoreInterface
 			':command' => $task->command,
 			':status' => $task->status,
 			':success' => $task->success,
-			':start_date' => get_class($task->start_date)=='DateTime' ? $task->start_date->format('Y-m-d H:i:s') : $task->start_date,
-			':end_date' => get_class($task->end_date)=='DateTime' ? $task->end_date->format('Y-m-d H:i:s') : $task->end_date,
-			':do_not_launch_until' => get_class($task->do_not_launch_until)=='DateTime' ? $task->do_not_launch_until->format('Y-m-d H:i:s') : $task->do_not_launch_until,
+			':start_date' => (is_object($task->start_date) && get_class($task->start_date)=='DateTime') ? $task->start_date->format('Y-m-d H:i:s') : $task->start_date,
+			':end_date' => (is_object($task->end_date) && get_class($task->end_date)=='DateTime') ? $task->end_date->format('Y-m-d H:i:s') : $task->end_date,
+			':do_not_launch_until' => (is_object($task->do_not_launch_until) && get_class($task->do_not_launch_until)=='DateTime') ? $task->do_not_launch_until->format('Y-m-d H:i:s') : $task->do_not_launch_until,
 			':log_file' => $task->log_file,
 			':relaunched' => $task->relaunched,
 			// ':params' => serialize($task->params),
@@ -108,7 +110,7 @@ class TaskStoreMysql implements TaskStoreInterface
             $saved = true;
             $task->id = $id;
             # Add task in list
-            $this->tasks[] = $task;
+            $this->tasks[$task->id] = $task;
         }
 
         return $saved;
@@ -131,9 +133,9 @@ class TaskStoreMysql implements TaskStoreInterface
 			':command' => $task->command,
 			':status' => $task->status,
 			':success' => $task->success,
-			':start_date' => get_class($task->start_date)=='DateTime' ? $task->start_date->format('Y-m-d H:i:s') : $task->start_date,
-			':end_date' => get_class($task->end_date)=='DateTime' ? $task->end_date->format('Y-m-d H:i:s') : $task->end_date,
-			':do_not_launch_until' => get_class($task->do_not_launch_until)=='DateTime' ? $task->do_not_launch_until->format('Y-m-d H:i:s') : $task->do_not_launch_until,
+			':start_date' => (is_object($task->start_date) && get_class($task->start_date)=='DateTime') ? $task->start_date->format('Y-m-d H:i:s') : $task->start_date,
+			':end_date' => (is_object($task->end_date) && get_class($task->end_date)=='DateTime') ? $task->end_date->format('Y-m-d H:i:s') : $task->end_date,
+			':do_not_launch_until' => (is_object($task->do_not_launch_until) && get_class($task->do_not_launch_until)=='DateTime') ? $task->do_not_launch_until->format('Y-m-d H:i:s') : $task->do_not_launch_until,
 			':log_file' => $task->log_file,
 			':relaunched' => $task->relaunched,
 			':params' => json_encode($task->params)
@@ -166,22 +168,23 @@ class TaskStoreMysql implements TaskStoreInterface
 	{
 		$updated = false;
 
-		$this->load();
-
 		$to_update = count($pids);
 		$is_updated = 0;
 
-		foreach ($pids as $id)
+		foreach ($this->tasks as $id => $task)
 		{
-			if(isset($this->tasks->$id))
+			if($task->status==='running')
 			{
-				# Update Task status & end_date
-				$this->tasks->$id->status = 'closed';
-				$this->tasks->$id->pid = null;
-				$this->tasks->$id->end_date = new DateTime('now');
-				if($this->save($this->tasks->$id))
+				if(in_array($task->pid, $pids))
 				{
-					$is_updated++;
+					# Update Task status & end_date
+					$this->tasks[$id]->status = 'closed';
+					$this->tasks[$id]->pid = null;
+					$this->tasks[$id]->end_date = new DateTime('now');
+					if($this->update($this->tasks[$id]))
+					{
+						$is_updated++;
+					}
 				}
 			}
 		}
@@ -230,8 +233,6 @@ class TaskStoreMysql implements TaskStoreInterface
 	 */
 	public function get_by_status($status)
 	{
-		$this->load();
-
 		$tasks = [];
 		
 		foreach ($this->tasks as $id => $task)

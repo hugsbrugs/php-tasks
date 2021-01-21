@@ -30,12 +30,31 @@ class TaskStoreFile implements TaskStoreInterface
 	{
 		if(is_file($this->tasks_file) && is_readable($this->tasks_file))
 		{
+			# Load Tasks
+			$this->tasks = [];
+
 			$file = file_get_contents($this->tasks_file);
-			$this->tasks = json_decode($file);
-			// if($this->tasks!==false)
-			// {
-				
-			// }
+			$tasks = json_decode($file);
+			if($tasks!==false)
+			{
+				foreach ($tasks as $key => $task)
+				{
+					$this->tasks[$task->id] = Task::create(
+						$task->id,
+						$task->pid,
+						$task->name,
+						$task->command,
+						$task->status,
+						$task->success,
+						$task->start_date!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $task->start_date) : null,
+						$task->end_date!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $task->end_date) : null,
+						$task->do_not_launch_until!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $task->do_not_launch_until) : null,
+						$task->log_file,
+						$task->relaunched,
+		            	$task->params
+					);
+		        }
+		    }
 		}
 		else
 		{
@@ -93,10 +112,10 @@ class TaskStoreFile implements TaskStoreInterface
 
 		$id = $task->id;
 		# Check Entry Does Not Exist
-		if(!isset($this->tasks->$id))
+		if(!isset($this->tasks[$id]))
 		{
 			# Add Task
-			$this->tasks->$id = $task;
+			$this->tasks[$id] = $task;
 			# Save Tasks File
 			$saved = $this->write();
 		}
@@ -116,16 +135,14 @@ class TaskStoreFile implements TaskStoreInterface
 	public function update($task)
 	{
 		$updated = false;
-		// error_log('TSF update task : ' . print_r($task, true));
-		$this->load();
 
 		$id = $task->id;
-		// error_log('TSF update id : ' . $id);
+
 		# Check Entry Exist
-		if(isset($this->tasks->$id))
+		if(isset($this->tasks[$id]))
 		{
 			# Replace Task
-			$this->tasks->$id = $task;
+			$this->tasks[$id] = $task;
 			# Save Tasks File
 			$updated = $this->write();
 		}
@@ -145,7 +162,7 @@ class TaskStoreFile implements TaskStoreInterface
 	{
 		$updated = false;
 
-		$this->load();
+		// $this->load();
 
 		$to_update = count($pids);
 		$is_update = 0;
@@ -158,9 +175,9 @@ class TaskStoreFile implements TaskStoreInterface
 				if(in_array($pid, $pids))
 				{
 					# Update Task status & end_date
-					$this->tasks->$id->status = 'closed';
-					$this->tasks->$id->pid = null;
-					$this->tasks->$id->end_date = new DateTime('now');
+					$this->tasks[$id]->status = 'closed';
+					$this->tasks[$id]->pid = null;
+					$this->tasks[$id]->end_date = new DateTime('now');
 					$is_update++;
 				}
 			}
@@ -187,10 +204,10 @@ class TaskStoreFile implements TaskStoreInterface
 
 		$id = $task->id;
 		# Check Entry Exist
-		if(isset($this->tasks->$id))
+		if(isset($this->tasks[$id]))
 		{
 			# Replace Task
-			unset($this->tasks->$id);
+			unset($this->tasks[$id]);
 			# Save Tasks File
 			$deleted = $this->write();
 		}
@@ -231,7 +248,8 @@ class TaskStoreFile implements TaskStoreInterface
 		$reseted = false;
 
 		# Save Tasks File
-		$this->tasks = new StdClass();
+		// $this->tasks = new StdClass();
+		$this->tasks = [];
 		$reseted = $this->write();
 
 		return $reseted;

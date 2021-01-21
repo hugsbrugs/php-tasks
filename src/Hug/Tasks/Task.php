@@ -3,6 +3,7 @@
 namespace Hug\Tasks;
 
 use JsonSerializable;
+use DateTime;
 
 /**
  * Task Class
@@ -47,20 +48,17 @@ class Task implements JsonSerializable
 	/**
 	 * Create task with all params
 	 */
-	public function create($id, $pid, $name, $command, $status, $success, $start_date, $end_date, $do_not_launch_until, $log_file, $relaunched, $params)
+	public static function create($id, $pid, $name, $command, $status, $success, $start_date, $end_date, $do_not_launch_until, $log_file, $relaunched, $params)
 	{
-		$this->id = $id;
-		$this->pid = $pid;
-		$this->name = $name;
-		$this->command = $command;
-		$this->status = $status;
-		$this->success = $success;
-		$this->start_date = $start_date;
-		$this->end_date = $end_date;
-		$this->do_not_launch_until = $do_not_launch_until;
-		$this->log_file = $log_file;
-		$this->relaunched = $relaunched;
-		$this->params = $params;
+		$Task = new Task($id, $pid, $name, $command, $params);
+		$Task->status = $status;
+		$Task->success = $success;
+		$Task->start_date = $start_date;
+		$Task->end_date = $end_date;
+		$Task->do_not_launch_until = $do_not_launch_until;
+		$Task->log_file = $log_file;
+		$Task->relaunched = $relaunched;
+		return $Task;
 	}
 
 	/**
@@ -82,6 +80,19 @@ class Task implements JsonSerializable
 	 */
 	public function jsonSerialize()
 	{
+		# Convert DateTime to ISO8601 format
+		$start_date = $this->start_date;
+		if(is_object($this->start_date) && get_class($this->start_date)==='DateTime')
+			$start_date = $this->start_date->format('Y-m-d H:i:s');
+
+		$end_date = $this->end_date;
+		if(is_object($this->end_date) && get_class($this->end_date)==='DateTime')
+			$end_date = $this->end_date->format('Y-m-d H:i:s');
+
+		$do_not_launch_until = $this->do_not_launch_until;
+		if(is_object($this->do_not_launch_until) && get_class($this->do_not_launch_until)==='DateTime')
+			$do_not_launch_until = $this->do_not_launch_until->format('Y-m-d H:i:s');
+
 		return  [
 			'id' => $this->id,
 			'pid' => $this->pid,
@@ -89,9 +100,9 @@ class Task implements JsonSerializable
 			'command' => $this->command,
 			'status' => $this->status,
 			'success' => $this->success,
-			'start_date' => $this->start_date,
-			'end_date' => $this->end_date,
-			'do_not_launch_until' => $this->do_not_launch_until,
+			'start_date' => $start_date,
+			'end_date' => $end_date,
+			'do_not_launch_until' => $do_not_launch_until,
 			'log_file' => $this->log_file,
 			'relaunched' => $this->relaunched,
 			'params' => $this->params,

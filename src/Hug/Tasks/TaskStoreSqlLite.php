@@ -4,6 +4,9 @@ namespace Hug\Tasks;
 
 use Hug\Database\SqlLiteDB as SqlLiteDB;
 
+use DateTime;
+use PDOException;
+
 /**
  *
  */
@@ -48,21 +51,20 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	        while($row = $query->fetch())
 	        {
 	            //var_dump($row);
-	            $this->tasks[] = new Task(
+	            $this->tasks[$row['id']] = Task::create(
 					$row['id'],
 					$row['pid'],
 					$row['name'],
 					$row['command'],
 					$row['status'],
 					$row['success'],
-					$row['start_date'],
-					$row['end_date'],
-					$row['do_not_launch_until'],
+					$row['start_date']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['start_date']) : null,
+					$row['end_date']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['end_date']) : null,
+					$row['do_not_launch_until']!==null ? DateTime::createFromFormat('Y-m-d H:i:s', $row['do_not_launch_until']) : null,
 					$row['log_file'],
 					$row['relaunched'],
-					json_decode($row['params'])
-					// unserialize($row['params']),
-	            );
+	            	json_decode($row['params'])
+				);
 	        }
 		}
 	}
@@ -83,7 +85,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 		$saved = false;
 
 		$id = null;
-        $insert = $this->tasks_db->dbh->prepare('INSERT INTO '.TASK_STORE_MYSQL_TABLE.' (id, pid, name, command, status, success, start_date, end_date, do_not_launch_until, log_file, relaunched, params) VALUES (NULL, :pid, :name, :command, :status, :success, :start_date, :end_date, :do_not_launch_until, :log_file, :relaunched, :params)');
+        $insert = $this->tasks_db->dbh->prepare('INSERT INTO '.TASK_STORE_SQLLITE_TABLE.' (id, pid, name, command, status, success, start_date, end_date, do_not_launch_until, log_file, relaunched, params) VALUES (NULL, :pid, :name, :command, :status, :success, :start_date, :end_date, :do_not_launch_until, :log_file, :relaunched, :params)');
 
         $insert->execute([
 			':pid' => $task->pid,
@@ -96,7 +98,6 @@ class TaskStoreSqlLite implements TaskStoreInterface
 			':do_not_launch_until' => get_class($task->do_not_launch_until)=='DateTime' ? $task->do_not_launch_until->format('Y-m-d H:i:s') : $task->do_not_launch_until,
 			':log_file' => $task->log_file,
 			':relaunched' => $task->relaunched,
-			// ':params' => serialize($task->params),
 			':params' => json_encode($task->params),
         ]);
         $id = $this->tasks_db->dbh->lastInsertId();
@@ -107,7 +108,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
             $saved = true;
             $task->id = $id;
             # Add task in list
-            $this->tasks[] = $task;
+            $this->tasks[$task->id] = $task;
         }
 
         return $saved;
@@ -120,7 +121,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	{
 		$updated = false;
         
-        $update = $this->tasks_db->dbh->prepare('UPDATE '.TASK_STORE_MYSQL_TABLE.' SET pid=:pid, name=:name, command=:command, status=:status, success=:success, start_date=:start_date, end_date=:end_date, do_not_launch_until=:do_not_launch_until,
+        $update = $this->tasks_db->dbh->prepare('UPDATE '.TASK_STORE_SQLLITE_TABLE.' SET pid=:pid, name=:name, command=:command, status=:status, success=:success, start_date=:start_date, end_date=:end_date, do_not_launch_until=:do_not_launch_until,
 			log_file=:log_file, relaunched=:relaunched, params=:params WHERE id=:id');
 
         $update->execute([
@@ -165,22 +166,23 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	{
 		$updated = false;
 
-		$this->load();
-
 		$to_update = count($pids);
 		$is_updated = 0;
 
-		foreach ($pids as $id)
+		foreach ($this->tasks as $id => $task)
 		{
-			if(isset($this->tasks->$id))
+			if($task->status==='running')
 			{
-				# Update Task status & end_date
-				$this->tasks->$id->status = 'closed';
-				$this->tasks->$id->pid = null;
-				$this->tasks->$id->end_date = new DateTime('now');
-				if($this->save($this->tasks->$id))
+				if(in_array($task->pid, $pids))
 				{
-					$is_updated++;
+					# Update Task status & end_date
+					$this->tasks[$id]->status = 'closed';
+					$this->tasks[$id]->pid = null;
+					$this->tasks[$id]->end_date = new DateTime('now');
+					if($this->update($this->tasks[$id]))
+					{
+						$is_updated++;
+					}
 				}
 			}
 		}
@@ -200,7 +202,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	{
 		$deleted = false;
 
-        $delete = $this->tasks_db->dbh->prepare('DELETE FROM '.TASK_STORE_MYSQL_TABLE.' WHERE id=:id');
+        $delete = $this->tasks_db->dbh->prepare('DELETE FROM '.TASK_STORE_SQLLITE_TABLE.' WHERE id=:id');
         
         $delete->execute([":id" => $task->id]);
         
@@ -229,8 +231,6 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function get_by_status($status)
 	{
-		$this->load();
-
 		$tasks = [];
 		
 		foreach ($this->tasks as $id => $task)
@@ -249,7 +249,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function reset()
 	{
-		$delete = $this->tasks_db->truncate_table(TASK_STORE_MYSQL_TABLE);
+		$delete = $this->tasks_db->truncate_table(TASK_STORE_SQLLITE_TABLE);
 	}
 
 	/**
@@ -261,7 +261,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 
 		try
 		{
-			$table = TASK_STORE_MYSQL_TABLE;
+			$table = TASK_STORE_SQLLITE_TABLE;
 			$command = <<<LABEL
 CREATE TABLE IF NOT EXISTS `$table` ( 
 id INTEGER PRIMARY KEY AUTOINCREMENT,
