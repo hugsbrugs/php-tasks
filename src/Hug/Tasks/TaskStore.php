@@ -9,12 +9,15 @@ use Exception;
  */
 class TaskStore
 {
+	# Singleton
+	private static $_instance = null;
+
 	private $store = null;
 
 	/**
 	 *
 	 */
-	function __construct()
+	private function __construct()
 	{
 		$task_store_methods = ['file', 'mysql', 'sqllite'];
 		if(defined('TASK_STORE_METHOD') && in_array(TASK_STORE_METHOD, $task_store_methods))
@@ -35,13 +38,13 @@ class TaskStore
 		switch (TASK_STORE_METHOD)
 		{
 			case 'file':
-				$this->store = new TaskStoreFile();
+				$this->store = TaskStoreFile::getInstance();
 				break;
 			case 'mysql':
-				$this->store = new TaskStoreMysql();
+				$this->store = TaskStoreMysql::getInstance();
 				break;
 			case 'sqllite':
-				$this->store = new TaskStoreSqlLite();
+				$this->store = TaskStoreSqlLite::getInstance();
 				break;			
 			default:
 				throw new Exception("INVAID OR MISSING TASK STORE METHOD", 1);
@@ -104,4 +107,20 @@ class TaskStore
 	{
 		return $this->store->reset();
 	}
+
+	/**
+     * Singleton creation
+     *
+     * @param void
+     * @return TaskStoreFile
+     */
+    public static function getInstance()
+    {
+    	if(is_null(self::$_instance)) 
+    	{
+    		self::$_instance = new TaskStore();  
+    	}
+ 
+    	return self::$_instance;
+    }
 }

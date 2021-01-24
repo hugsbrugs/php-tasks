@@ -11,13 +11,16 @@ use StdClass;
  */
 class TaskStoreFile implements TaskStoreInterface
 {
-	public $tasks = null; 
-	public $tasks_file = null;
+	# Singleton
+	private static $_instance = null;
+
+	private $tasks = null; 
+	private $tasks_file = null;
 
 	/**
 	 *
 	 */
-	function __construct()
+	private function __construct()
 	{
 		$this->tasks_file = TASK_STORE_FILE;
 		$this->load();
@@ -69,13 +72,14 @@ class TaskStoreFile implements TaskStoreInterface
 	 */
 	public function tasks()
 	{
+		$this->load();
 		return $this->tasks;
 	}
 
 	/**
 	 *
 	 */
-	private function write_lock()
+	/*private function write_lock()
 	{
 		$f = fopen($this->tasks_file, 'a+');
 		if (flock($f, LOCK_EX))
@@ -83,10 +87,10 @@ class TaskStoreFile implements TaskStoreInterface
 		    // sleep(10);
 		    fseek($f, 0);
 		    // var_dump(fgets($f, 4048));
-		    fwrite($f, json_encode($this->tasks));
+		    fwrite($f, json_encode($this->tasks, JSON_PRETTY_PRINT));
 		    flock($f, LOCK_UN);
 		}
-	}
+	}*/
 
 	/**
 	 *
@@ -95,7 +99,7 @@ class TaskStoreFile implements TaskStoreInterface
 	{
 		$writed = false;
 
-		if(file_put_contents($this->tasks_file, json_encode($this->tasks, JSON_PRETTY_PRINT | LOCK_EX))!==false)
+		if(false !== $bytes = file_put_contents($this->tasks_file, json_encode($this->tasks, JSON_PRETTY_PRINT | LOCK_EX)))
 		{
 			$writed = true;
 		}
@@ -108,6 +112,8 @@ class TaskStoreFile implements TaskStoreInterface
 	 */
 	public function save($task)
 	{
+		$this->load();
+
 		$saved = false;
 
 		$id = $task->id;
@@ -122,8 +128,6 @@ class TaskStoreFile implements TaskStoreInterface
 		else
 		{
 			error_log('Task Already Saved');
-			// throw new Exception("Task Already Saved", 1);
-			
 		}
 
 		return $saved;
@@ -134,6 +138,8 @@ class TaskStoreFile implements TaskStoreInterface
 	 */
 	public function update($task)
 	{
+		$this->load();
+
 		$updated = false;
 
 		$id = $task->id;
@@ -160,9 +166,9 @@ class TaskStoreFile implements TaskStoreInterface
 	 */
 	public function update_closed($pids)
 	{
-		$updated = false;
+		$this->load();
 
-		// $this->load();
+		$updated = false;
 
 		$to_update = count($pids);
 		$is_update = 0;
@@ -174,6 +180,7 @@ class TaskStoreFile implements TaskStoreInterface
 				$pid = $task->pid;
 				if(in_array($pid, $pids))
 				{
+					error_log('close task : ' . $task->id);
 					# Update Task status & end_date
 					$this->tasks[$id]->status = 'closed';
 					$this->tasks[$id]->pid = null;
@@ -184,7 +191,11 @@ class TaskStoreFile implements TaskStoreInterface
 		}
 
 		# Save Tasks File
-		$updated_file = $this->write();
+		$updated_file = false;
+		if($is_update > 0)
+		{
+			$updated_file = $this->write();
+		}
 
 		if($to_update===$is_update && $updated_file)
 		{
@@ -200,6 +211,8 @@ class TaskStoreFile implements TaskStoreInterface
 	 */
 	public function delete($task)
 	{
+		$this->load();
+
 		$deleted = false;
 
 		$id = $task->id;
@@ -248,7 +261,6 @@ class TaskStoreFile implements TaskStoreInterface
 		$reseted = false;
 
 		# Save Tasks File
-		// $this->tasks = new StdClass();
 		$this->tasks = [];
 		$reseted = $this->write();
 
@@ -258,14 +270,14 @@ class TaskStoreFile implements TaskStoreInterface
 	/**
 	 * Initialize Task File with empty object
 	 */
-	public function initialize()
+	private function initialize()
 	{
 		$initialized = false;
 
 		try
 		{
 			# Save Tasks File
-			if(file_put_contents(TASK_STORE_FILE, json_encode(new StdClass(), JSON_PRETTY_PRINT | LOCK_EX))!==false)
+			if(file_put_contents(TASK_STORE_FILE, json_encode([], JSON_PRETTY_PRINT | LOCK_EX))!==false)
 			{
 				$initialized = true;
 			}
@@ -277,5 +289,21 @@ class TaskStoreFile implements TaskStoreInterface
 
 		return $initialized;
 	}
+
+	/**
+     * Singleton creation
+     *
+     * @param void
+     * @return TaskStoreFile
+     */
+    public static function getInstance()
+    {
+    	if(is_null(self::$_instance)) 
+    	{
+    		self::$_instance = new TaskStoreFile();  
+    	}
+ 
+    	return self::$_instance;
+    }
 
 }

@@ -12,13 +12,16 @@ use PDOException;
  */
 class TaskStoreSqlLite implements TaskStoreInterface
 {
+	# Singleton
+	private static $_instance = null;
+
 	public $tasks = null; 
 	public $tasks_db = null;
 	
 	/**
 	 *
 	 */
-	function __construct()
+	private function __construct()
 	{
 		$this->tasks_db = SqlLiteDB::getInstance(
 			TASK_STORE_SQLLITE_FILE,
@@ -74,6 +77,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function tasks()
 	{
+		$this->load();
 		return $this->tasks;
 	}
 
@@ -164,6 +168,8 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function update_closed($pids)
 	{
+		$this->load();
+
 		$updated = false;
 
 		$to_update = count($pids);
@@ -200,6 +206,8 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function delete($task)
 	{
+		$this->load();
+
 		$deleted = false;
 
         $delete = $this->tasks_db->dbh->prepare('DELETE FROM '.TASK_STORE_SQLLITE_TABLE.' WHERE id=:id');
@@ -231,6 +239,8 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	 */
 	public function get_by_status($status)
 	{
+		$this->load();
+		
 		$tasks = [];
 		
 		foreach ($this->tasks as $id => $task)
@@ -255,7 +265,7 @@ class TaskStoreSqlLite implements TaskStoreInterface
 	/**
 	 * Initialize Task Database Table
 	 */
-	public function initialize()
+	private function initialize()
 	{
 		$initialized = false;
 
@@ -290,5 +300,21 @@ LABEL;
 
 		return $initialized;
 	}
+
+	/**
+     * Singleton creation
+     *
+     * @param void
+     * @return TaskStoreMysql
+     */
+    public static function getInstance()
+    {
+    	if(is_null(self::$_instance)) 
+    	{
+    		self::$_instance = new TaskStoreSqlLite();  
+    	}
+ 
+    	return self::$_instance;
+    }
 
 }

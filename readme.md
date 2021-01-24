@@ -80,7 +80,7 @@ $tasks_threads = [
 
 
 # Create Task Store (see config.ini for params)
-$task_store = new TaskStore();
+$task_store = TaskStore::getInstance();
 
 # Start Task Manager
 $TaskManager = new TaskManager($tasks_threads, $task_store);
@@ -110,7 +110,7 @@ stderr_logfile_maxbytes=1MB
 In another php file, create a task and add it to the task store.
 ```php
 # Create Task Store (see config.ini for params)
-$task_store = new TaskStore();
+$task_store = TaskStore::getInstance();
 
 # Create a Task
 $task = new Task(1, null, 'export', 'ls -lsa', ['project_id' => 34]);

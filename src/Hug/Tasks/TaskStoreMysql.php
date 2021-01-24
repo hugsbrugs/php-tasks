@@ -12,13 +12,16 @@ use PDOException;
  */
 class TaskStoreMysql implements TaskStoreInterface
 {
+	# Singleton
+	private static $_instance = null;
+
 	public $tasks = null; 
 	public $tasks_db = null;
 
 	/**
 	 *
 	 */
-	function __construct()
+	private function __construct()
 	{
 		$this->tasks_db = MySqlDB::getInstance(
 			TASK_STORE_MYSQL_HOST,
@@ -75,6 +78,7 @@ class TaskStoreMysql implements TaskStoreInterface
 	 */
 	public function tasks()
 	{
+		$this->load();
 		return $this->tasks;
 	}
 
@@ -166,6 +170,8 @@ class TaskStoreMysql implements TaskStoreInterface
 	 */
 	public function update_closed($pids)
 	{
+		$this->load();
+
 		$updated = false;
 
 		$to_update = count($pids);
@@ -202,6 +208,8 @@ class TaskStoreMysql implements TaskStoreInterface
 	 */
 	public function delete($task)
 	{
+		$this->load();
+
 		$deleted = false;
 
         $delete = $this->tasks_db->dbh->prepare('DELETE FROM '.TASK_STORE_MYSQL_TABLE.' WHERE id=:id');
@@ -233,6 +241,8 @@ class TaskStoreMysql implements TaskStoreInterface
 	 */
 	public function get_by_status($status)
 	{
+		$this->load();
+		
 		$tasks = [];
 		
 		foreach ($this->tasks as $id => $task)
@@ -257,7 +267,7 @@ class TaskStoreMysql implements TaskStoreInterface
 	/**
 	 * Initialize Task Database Table
 	 */
-	public function initialize()
+	private function initialize()
 	{
 		$initialized = false;
 
@@ -297,4 +307,20 @@ LABEL;
 
 		return $initialized;
 	}
+
+	/**
+     * Singleton creation
+     *
+     * @param void
+     * @return TaskStoreMysql
+     */
+    public static function getInstance()
+    {
+    	if(is_null(self::$_instance)) 
+    	{
+    		self::$_instance = new TaskStoreMysql();  
+    	}
+ 
+    	return self::$_instance;
+    }
 }

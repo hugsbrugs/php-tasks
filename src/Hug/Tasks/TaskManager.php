@@ -106,7 +106,6 @@ class TaskManager
 	 */
 	function load_pending_tasks()
 	{
-		// error_log('load_pending_tasks');
 		# Don't Load if already loading
 		if($this->is_tasking===false)
 	    {
@@ -120,7 +119,6 @@ class TaskManager
 			{
 				if(isset($this->task_queue[$task->name]))
 				{
-					// error_log('Add Task ' . $task->name);
 					$this->task_queue[$task->name]->insert($task, 1);
 				}
 				else
@@ -139,7 +137,6 @@ class TaskManager
 	 */
 	public function check_running_pids()
 	{
-		// error_log('check_running_pids');
 		$closed_pids = [];
 		# Check running pids
 	    foreach ($this->running_pids as $task_name => $task_pids)
@@ -148,7 +145,6 @@ class TaskManager
 	    	{
 	    		if(!Scripts::is_running($task_pid))
 		        {
-		        	// error_log('close pid : ' . $task_pid);
 		        	$closed_pids[] = $task_pid;
 
 		            unset($this->running_pids[$task_name][$key]);
@@ -159,17 +155,15 @@ class TaskManager
 	    }
 
 	    # Update Database
-	    $this->task_store->update_closed($closed_pids);
+	    if(count($closed_pids) > 0)
+	    {
+		    $this->task_store->update_closed($closed_pids);
+	    }
 
 	    # RE INDEX ARRAY
 	    foreach ($this->running_pids as $task_name => $task_pids)
 	    {
-	    	// error_log('task_name : ' . $task_name);
-	    	// error_log('running_pids : ' . print_r($this->running_pids[$task_name], true));
-
 	    	$this->running_pids[$task_name] = array_values($task_pids);
-
-	    	//error_log('running_pids : ' . print_r($this->running_pids[$task_name], true));
 	    }
 	}
 
@@ -263,7 +257,6 @@ class TaskManager
 	 */
 	public function add_task($task)
 	{
-		// error_log('add_task : ' . print_r($task, true));
 		return $this->task_store->save($task);
 	}
 }

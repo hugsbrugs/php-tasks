@@ -40,6 +40,6 @@ interface TaskStoreInterface
 	/**
 	 * Initialize Task Database Table
 	 */
-	public function initialize();
+	// private function initialize();
 	
 }
